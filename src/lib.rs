@@ -17,13 +17,14 @@ impl Index<(usize, usize)> for Nono {
     type Output = CellState;
 
     fn index(&self, (x, y): (usize, usize)) -> &Self::Output {
-        &self.cells[y * self.width + x]
+        &self.cells[self.xy_to_index(x, y)]
     }
 }
 
 impl IndexMut<(usize, usize)> for Nono {
     fn index_mut(&mut self, (x, y): (usize, usize)) -> &mut Self::Output {
-        &mut self.cells[y * self.width + x]
+        let index = self.xy_to_index(x, y);
+        &mut self.cells[index]
     }
 }
 
@@ -38,6 +39,35 @@ impl Nono {
             rows: Vec::with_capacity(height),
             cols: Vec::with_capacity(width),
         }
+    }
+
+    /// Return a view into a column (starting at 0).  This can't be
+    /// made mutable, since columns aren't internally continuous.
+    pub fn column(&self, x: usize) -> Option<Vec<CellState>> {
+        if x >= self.width {
+            None
+        } else {
+            let mut ret = Vec::with_capacity(self.height);
+            for y in 0..self.height {
+                ret.push(self[(x, y)]);
+            }
+            Some(ret)
+        }
+    }
+
+    /// Return a view into a row.  Unlike [column], this is a real
+    /// slice.
+    pub fn row(&self, y: usize) -> Option<&[CellState]> {
+        if y >= self.height {
+            None
+        } else {
+            return Some(&self.cells[self.xy_to_index(0, y)..self.xy_to_index(self.width, y)]);
+        }
+    }
+
+    #[inline]
+    pub fn xy_to_index(&self, x: usize, y: usize) -> usize {
+        y * self.width + x
     }
 
     /// Generate a simple representation of this 'gram
@@ -104,6 +134,7 @@ impl CellState {
     /// are the same value.
     fn accepts(&self, other: &CellState) -> bool {
         *self == CellState::Undecided || self == other
+        // println!("{:?} accepts {:?}? {:?}", self, other, ret);
     }
 }
 
@@ -150,7 +181,6 @@ pub mod solver {
         cols: Vec<CandidateMaskSet>,
         nono: &'a mut Nono,
     }
-
     impl<'a> Solver<'a> {
         pub fn new(from: &'a mut Nono) -> Solver<'a> {
             Solver {
@@ -171,9 +201,10 @@ pub mod solver {
         pub fn solve(&mut self) {
             // TODO Prepare
             self.nono.clear_solution();
-
-            self.consensus_step();
-            self.filter_step();
+            while self.nono.cells.iter().any(|c| *c == CellState::Undecided) {
+                self.consensus_step();
+                self.filter_step();
+            }
             // TODO Finalize
         }
 
@@ -185,9 +216,7 @@ pub mod solver {
             // Rows
             for (y, row) in self.rows.iter().enumerate() {
                 let consensus = find_consensus(row);
-                let mut i = 0;
                 for (x, square) in consensus.iter().enumerate() {
-                    i += 1;
                     if *square != CellState::Undecided {
                         // FIXME don't overwrite a different value: check for conflicts.
                         self.nono[(x, y)] = *square;
@@ -211,11 +240,18 @@ pub mod solver {
         /// candidates that don't fit in the grid, that is, that
         /// require that a cell marked as empty be filled, or filled
         /// be empty.
-        fn filter_step(&self) {
-
+        fn filter_step(&mut self) {
+            // Rows
+            for y in 0..self.nono.height {
+                let grid_row = self.nono.row(y).unwrap();
+                self.rows[y].retain(|cand| can_place(&grid_row, cand));
+            }
+            // Cols
+            for x in 0..self.nono.width {
+                let grid_col = self.nono.column(x).unwrap();
+                self.cols[x].retain(|cand| can_place(&grid_col, cand));
+            }
         }
-
-
     }
 
     /// Find the intersection of a set of a [CandidateMask], that is,
@@ -300,6 +336,21 @@ pub mod solver {
             next.push(i);
             make_candidates(blanks - i, nth_seq + 1, total_seqs, next, results);
         }
+    }
+
+    /// Compare a row or column of the grid with a candidate, and
+    /// return true if this candidate would fit this row or column,
+    /// that is, if there are no incompatible Filled/Empty cells
+    /// between the grid and the candidate.
+    fn can_place(grid: &[CellState], cand: &[CellState]) -> bool {
+        grid.iter().zip(cand).all(|(g, c)| g.accepts(c))
+        // println!(
+        //     "{} over {}? {:?}",
+        //     mask_as_string(&cand),
+        //     mask_as_string(&grid),
+        //     ret
+        // );
+        // ret
     }
 }
 
@@ -452,7 +503,7 @@ pub mod parser {
 
     // ** Parser utilities
 
-    /// Remove surrounding quotes from a string.
+    /// Remove surrounding quotes from a strin.
     fn unquote(s: &str) -> String {
         if s.starts_with("\"") && s.ends_with("\"") {
             s[1..s.len() - 1].to_string()
@@ -460,4 +511,16 @@ pub mod parser {
             s.to_string()
         }
     }
+}
+
+// * Old stuff
+
+pub fn mask_as_string(mask: &[CellState]) -> String {
+    mask.iter()
+        .map(|b| match *b {
+            CellState::Undecided => "?",
+            CellState::Empty => "_",
+            CellState::Filled => "█",
+        })
+        .collect::<String>()
 }
