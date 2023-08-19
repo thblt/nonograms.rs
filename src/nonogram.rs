@@ -1,4 +1,5 @@
 use std::ops::{Index, IndexMut};
+use std::fmt;
 
 // * The Nonogram type
 
@@ -161,6 +162,16 @@ pub enum BuilderError {
     Invalid,
     WidthAlreadySet,
     HeightAlreadySet,
+}
+
+impl fmt::Display for BuilderError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BuilderError::Invalid => f.write_str("Invalid builder."),
+            BuilderError::WidthAlreadySet => f.write_str("Width was already set"),
+            BuilderError::HeightAlreadySet => f.write_str("Height was already set."),
+        }
+    }
 }
 
 type BuilderResult<T> = Result<T, BuilderError>;

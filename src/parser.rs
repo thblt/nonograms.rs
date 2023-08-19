@@ -53,8 +53,14 @@ impl From<ParseIntError> for ParserError {
 
 impl Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Ok(write!(f, "Parse error TBD")?) //@FIXME
+        match self {
+            ParserError::InternalError => write!(f, "Internal error (parser is borken)"),
+            ParserError::ParseIntError => write!(f, "Cannot parse int value."),
+            ParserError::IOError(e) => e.fmt(f),
+            ParserError::BuilderError(e) => e.fmt(f),
+        }
     }
+    
 }
 
 impl Parser {
