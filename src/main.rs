@@ -1,5 +1,4 @@
-use nonograms::parser::*;
-use nonograms::solver::*;
+use nonograms::{Parser,Solver};
 use std::env::args;
 use std::fs;
 use std::io;
@@ -9,7 +8,7 @@ fn go(mut r: impl io::Read) {
     let parser = Parser::new().parse(&mut r);
     match parser {
         Ok(mut n) => {
-            println!("Dimensions (w×h) = {}×{}", n.width, n.height);
+            println!("Dimensions (w×h) = {}×{}", n.width(), n.height());
             Solver::new(&mut n).solve();
             println!("{}", n.as_text());
         }
@@ -22,7 +21,7 @@ fn go(mut r: impl io::Read) {
 fn main() {
     let args = args().skip(1);
     if args.len() == 0 {
-        println!()
+        println!("Give args")
     } else {
         for (fname, fd) in args.map(|fname| (fname.clone(), fs::File::open(&fname))) {
             println!("File: {}", fname);
