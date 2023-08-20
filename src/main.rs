@@ -21,7 +21,7 @@ fn go(mut r: impl io::Read) {
 fn main() {
     let args = args().skip(1);
     if args.len() == 0 {
-        println!("Give args")
+        go(std::io::stdin());
     } else {
         for (fname, fd) in args.map(|fname| (fname.clone(), fs::File::open(&fname))) {
             println!("File: {}", fname);
