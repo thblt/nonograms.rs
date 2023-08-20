@@ -1,4 +1,4 @@
-use nonograms::{Parser,Solver};
+use nonograms::Parser;
 use std::env::args;
 use std::fs;
 use std::io;
@@ -9,11 +9,11 @@ fn go(mut r: impl io::Read) {
     match parser {
         Ok(mut n) => {
             println!("Dimensions (w×h) = {}×{}", n.width(), n.height());
-            Solver::new(&mut n).solve();
+            n.solve();
             println!("{}", n.as_text());
         }
         Err(e) => {
-            println!("Error: {}", e)
+            println!("Error: {}", e);
         }
     };
 }

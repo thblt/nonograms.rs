@@ -1,3 +1,4 @@
+use crate::Solver;
 use std::ops::{Index, IndexMut};
 use std::fmt;
 
@@ -28,6 +29,10 @@ impl Nonogram {
 
     pub fn builder() -> NonogramBuilder {
         NonogramBuilder::new()
+    }
+
+    pub fn solve(&mut self) {
+        Solver::new(self).solve();
     }
 
     pub fn width(&self) -> usize {
